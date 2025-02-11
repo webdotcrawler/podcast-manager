@@ -42,6 +42,81 @@ for file in [INVALID_RSS_ARCHIVE, INVALID_RSS_LOG]:
 
 print(f"Loaded {len(rss_feed.RSS_FEEDS)} RSS feeds from rss_feed.py")
 
+
+def log_invalid_rss(rss_url, reason):
+    """Log invalid RSS feeds with timestamps and archive them."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = f"[{timestamp}] {reason}: {rss_url}\n"
+    print(f"📌 Logging invalid RSS: {rss_url} - {reason}")
+    with open(INVALID_RSS_LOG, "a", encoding="utf-8") as log_file:
+        log_file.write(log_entry)
+    with open(INVALID_RSS_ARCHIVE, "a", encoding="utf-8") as archive_file:
+        archive_file.write(f"{rss_url}\n")
+
+def fetch_podchaser_data():
+    """Fetch podcast data from Podchaser API using numeric pagination with 100 items per call."""
+    podcasts = []
+    page = 0
+    while True:
+        query = f"""
+        {{
+            podcasts(first: 100, page: {page}) {{
+                data {{
+                    id
+                    title
+                    rssUrl
+                    imageUrl
+                    language
+                    numberOfEpisodes
+                    startDate
+                    latestEpisodeDate
+                    author {{
+                        name
+                        email
+                    }}
+                }}
+            }}
+        }}
+        """
+        response = requests.post(PODCHASER_API_URL, json={"query": query}, headers=HEADERS_PODCHASER)
+        print("Podchaser Status Code:", response.status_code)
+        print("Podchaser Response Content:", response.text[:500])
+        if response.status_code != 200:
+            print(f"❌ Error fetching Podchaser data: {response.status_code} - {response.text}")
+            break
+        try:
+            data = response.json()
+            page_data = data.get("data", {}).get("podcasts", {}).get("data", [])
+            if not page_data:
+                break
+            for podcast in page_data:
+                if not podcast.get("author", {}).get("email"):
+                    continue
+                podcasts.append({
+                    "id": podcast.get("id", "N/A"),
+                    "title": podcast.get("title", "N/A"),
+                    "description": "",
+                    "url": "",
+                    "webUrl": "",
+                    "rssUrl": podcast.get("rssUrl", "N/A"),
+                    "imageUrl": podcast.get("imageUrl", "N/A"),
+                    "language": podcast.get("language", "N/A"),
+                    "numberOfEpisodes": podcast.get("numberOfEpisodes", 0),
+                    "startDate": podcast.get("startDate", "N/A"),
+                    "latestEpisodeDate": podcast.get("latestEpisodeDate", "N/A"),
+                    "categories": None,
+                    "author_name": podcast.get("author", {}).get("name", "N/A"),
+                    "author_email": podcast.get("author", {}).get("email", "N/A"),
+                    "source": "Podchaser"
+                })
+            if len(page_data) < 100:
+                break
+            page += 1
+        except Exception as e:
+            print("❌ Error parsing Podchaser JSON response:", str(e))
+            break
+    return podcasts
+
 ### Spotify API Helpers
 
 import base64
