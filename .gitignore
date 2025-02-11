@@ -4,3 +4,7 @@
 #logs
 invalid_rss_archive.txt
 invalid_rss_log.txt
+
+__pycache__/
+
+
