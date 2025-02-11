@@ -1,1 +1,0 @@
-integrated spotify api to extend the data collection
