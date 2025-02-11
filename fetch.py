@@ -9,6 +9,7 @@ from datetime import datetime
 from importlib import reload
 import schedule
 import time
+import base64
 
 # Import modules
 import rss_feed  # Must define RSS_FEEDS as a list of RSS URLs
@@ -25,7 +26,7 @@ HEADERS_PODCHASER = {
     "Content-Type": "application/json"
 }
 
-# Spotify API credentials (set these in your .env file)
+# Spotify API credentials
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 
@@ -54,7 +55,7 @@ def log_invalid_rss(rss_url, reason):
         archive_file.write(f"{rss_url}\n")
 
 def fetch_podchaser_data():
-    """Fetch podcast data from Podchaser API using numeric pagination with 100 items per call."""
+    """Fetch podcast data from Podchaser API using numeric pagination with 100 items per call (Maximum allowed is 100)."""
     podcasts = []
     page = 0
     while True:
@@ -118,8 +119,6 @@ def fetch_podchaser_data():
     return podcasts
 
 ### Spotify API Helpers
-
-import base64
 
 def get_spotify_access_token():
     """Get an access token from Spotify using Client Credentials Flow."""
@@ -198,7 +197,7 @@ def fetch_spotify_data():
     print(f"Fetched {len(podcasts)} podcasts from Spotify.")
     return podcasts
 
-### Helper functions for RSS data (same as before)
+### Helper functions for RSS data
 
 def fetch_rss_feed_data(feed_urls):
     """Extract podcast metadata from RSS feeds, including itunes:email."""
@@ -295,63 +294,15 @@ def build_legacy_data():
 ### Build full database from all sources
 
 def build_full_database():
-    """Combine Podchaser, RSS, legacy, Spotify, and Podcast Index data to build the full podcast database."""
+    """Combine Podchaser, RSS, legacy, Spotify, and data to build the full podcast database."""
     podchaser_data = fetch_podchaser_data()
     rss_data = fetch_rss_feed_data(rss_feed.RSS_FEEDS)
     legacy_data = build_legacy_data()
     spotify_data = fetch_spotify_data()
-    podcast_index_data = fetch_podcast_index_data()
-    full_data = podchaser_data + rss_data + legacy_data + spotify_data + podcast_index_data
+    full_data = podchaser_data + rss_data + legacy_data + spotify_data
     print(f"Full database built with {len(full_data)} records.")
     return full_data
 
-### Fetch Podcast Index Data
-
-def fetch_podcast_index_data():
-    """Fetch podcast data from Podcast Index API as a supplementary data source."""
-    api_key = os.getenv("PODCAST_INDEX_API_KEY")
-    api_secret = os.getenv("PODCAST_INDEX_API_SECRET")
-    if not api_key or not api_secret:
-        print("⚠️ Podcast Index credentials not provided.")
-        return []
-    headers = {
-        "User-Agent": "YourApp/1.0",
-        "X-API-Key": api_key,
-        "X-API-Secret": api_secret
-    }
-    url = "https://api.podcastindex.org/api/1.0/bestpodcasts"
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code != 200:
-            print(f"❌ Podcast Index error: {response.status_code} - {response.text}")
-            return []
-        data = response.json()
-        podcasts = []
-        for item in data.get("podcasts", []):
-            if not item.get("email"):
-                continue
-            podcasts.append({
-                "id": item.get("id", "N/A"),
-                "title": item.get("title", "N/A"),
-                "description": item.get("description", "N/A"),
-                "url": item.get("url", "N/A"),
-                "webUrl": item.get("website", "N/A"),
-                "rssUrl": item.get("rss", "N/A"),
-                "imageUrl": item.get("image", "N/A"),
-                "language": item.get("language", "N/A"),
-                "numberOfEpisodes": item.get("totalEpisodes", 0),
-                "startDate": "N/A",
-                "latestEpisodeDate": "N/A",
-                "categories": item.get("categories", []),
-                "author_name": item.get("publisher", "N/A"),
-                "author_email": item.get("email", "N/A"),
-                "source": "Podcast Index"
-            })
-        print(f"Fetched {len(podcasts)} podcasts from Podcast Index.")
-        return podcasts
-    except Exception as e:
-        print(f"❌ Error fetching Podcast Index data: {e}")
-        return []
 
 ### Save data to Excel
 
