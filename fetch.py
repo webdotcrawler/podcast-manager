@@ -9,7 +9,7 @@ from datetime import datetime
 from importlib import reload
 import schedule
 import time
-import base64
+#import base64
 
 # Import modules
 import rss_feed  # Must define RSS_FEEDS as a list of RSS URLs
@@ -25,10 +25,6 @@ HEADERS_PODCHASER = {
     "Authorization": f"Bearer {os.getenv('Production_Client_Token')}",
     "Content-Type": "application/json"
 }
-
-# Spotify API credentials
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 
 # File paths
 INVALID_RSS_ARCHIVE = "invalid_rss_archive.txt"
@@ -118,84 +114,6 @@ def fetch_podchaser_data():
             break
     return podcasts
 
-### Spotify API Helpers
-
-def get_spotify_access_token():
-    """Get an access token from Spotify using Client Credentials Flow."""
-    if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
-        print("Spotify credentials not provided in environment.")
-        return None
-    url = "https://accounts.spotify.com/api/token"
-    auth_header = base64.b64encode(f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}".encode("utf-8")).decode("utf-8")
-    headers = {
-        "Authorization": f"Basic {auth_header}",
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    data = {"grant_type": "client_credentials"}
-    response = requests.post(url, headers=headers, data=data)
-    if response.status_code != 200:
-        print(f"❌ Spotify token request failed: {response.status_code} {response.text}")
-        return None
-    token_info = response.json()
-    return token_info.get("access_token")
-
-def fetch_spotify_data():
-    """Fetch podcast show data from Spotify using the Search endpoint.
-       We iterate over the letters a-z and paginate through results.
-    """
-    access_token = get_spotify_access_token()
-    if not access_token:
-        return []
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
-    podcasts = []
-    # Iterate over letters a-z (alphabetical approach)
-    for letter in list("abcdefghijklmnopqrstuvwxyz"):
-        offset = 0
-        while True:
-            url = "https://api.spotify.com/v1/search"
-            params = {
-                "q": letter,
-                "type": "show",
-                "limit": 50,  # Maximum allowed is 50
-                "offset": offset
-            }
-            response = requests.get(url, headers=headers, params=params)
-            if response.status_code != 200:
-                print(f"❌ Spotify search error for letter '{letter}': {response.status_code} {response.text}")
-                break
-            data = response.json()
-            shows = data.get("shows", {}).get("items", [])
-            if not shows:
-                break
-            for show in shows:
-                # Spotify Show objects do not include email contact information.
-                # We'll use the publisher as author_name and set author_email as "N/A"
-                podcasts.append({
-                    "id": show.get("id", "N/A"),
-                    "title": show.get("name", "N/A"),
-                    "description": show.get("description", "N/A"),
-                    "url": show.get("external_urls", {}).get("spotify", "N/A"),
-                    "webUrl": show.get("external_urls", {}).get("spotify", "N/A"),
-                    "rssUrl": show.get("rss", "N/A"),  # Some shows include an RSS URL
-                    "imageUrl": show.get("images", [{}])[0].get("url", "N/A") if show.get("images") else "N/A",
-                    "language": show.get("language", "N/A"),
-                    "numberOfEpisodes": show.get("total_episodes", 0),
-                    "startDate": "N/A",
-                    "latestEpisodeDate": "N/A",
-                    "categories": None,
-                    "author_name": show.get("publisher", "N/A"),
-                    "author_email": "N/A",  # Spotify does not supply podcast contact emails
-                    "source": "Spotify"
-                })
-            if len(shows) < 50:
-                break
-            offset += 50
-            # Wait a bit to avoid rate limits
-            time.sleep(1)
-    print(f"Fetched {len(podcasts)} podcasts from Spotify.")
-    return podcasts
 
 ### Helper functions for RSS data
 
@@ -298,8 +216,7 @@ def build_full_database():
     podchaser_data = fetch_podchaser_data()
     rss_data = fetch_rss_feed_data(rss_feed.RSS_FEEDS)
     legacy_data = build_legacy_data()
-    spotify_data = fetch_spotify_data()
-    full_data = podchaser_data + rss_data + legacy_data + spotify_data
+    full_data = podchaser_data + rss_data + legacy_data
     print(f"Full database built with {len(full_data)} records.")
     return full_data
 
