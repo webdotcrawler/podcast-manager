@@ -9,6 +9,7 @@ from datetime import datetime
 from importlib import reload
 import schedule
 import time
+#import base64
 
 # Import modules
 import rss_feed  # Must define RSS_FEEDS as a list of RSS URLs
@@ -38,6 +39,7 @@ for file in [INVALID_RSS_ARCHIVE, INVALID_RSS_LOG]:
 
 print(f"Loaded {len(rss_feed.RSS_FEEDS)} RSS feeds from rss_feed.py")
 
+
 def log_invalid_rss(rss_url, reason):
     """Log invalid RSS feeds with timestamps and archive them."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -49,7 +51,7 @@ def log_invalid_rss(rss_url, reason):
         archive_file.write(f"{rss_url}\n")
 
 def fetch_podchaser_data():
-    """Fetch podcast data from Podchaser API using numeric pagination with 100 items per call."""
+    """Fetch podcast data from Podchaser API using numeric pagination with 100 items per call (Maximum allowed is 100)."""
     podcasts = []
     page = 0
     while True:
@@ -112,24 +114,28 @@ def fetch_podchaser_data():
             break
     return podcasts
 
+
+### Helper functions for RSS data
+
 def fetch_rss_feed_data(feed_urls):
-    """Extract podcast metadata from RSS feeds, including itunes:email.
-       Fetches the feed content using requests and passes the raw XML to feedparser.
-    """
+    """Extract podcast metadata from RSS feeds, including itunes:email."""
     podcasts = []
     invalid_feeds = []
     for feed in tqdm(feed_urls, desc="Fetching RSS Feeds"):
+        parsed_feed = feedparser.parse(feed)
         try:
             response = requests.get(feed, timeout=10)
             response.raise_for_status()
             raw_xml = response.text
+            # Parse feed content with feedparser using raw XML
             parsed_feed = feedparser.parse(raw_xml)
+            # Also parse XML using ElementTree for email extraction
             root = ET.fromstring(raw_xml)
             namespace = {"itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd"}
-            email_elem = root.find(".//itunes:owner/itunes:email", namespace)
-            author_email = email_elem.text.strip() if email_elem is not None else None
+            email = root.find(".//itunes:owner/itunes:email", namespace)
+            author_email = email.text.strip() if email is not None else None
         except Exception as e:
-            print(f"❌ Failed to process feed {feed}: {e}")
+            print(f"❌ Failed to extract email from {feed}: {e}")
             author_email = None
             parsed_feed = None
         print(f"📡 Feed: {feed} - Extracted Email: {author_email}")
@@ -170,14 +176,16 @@ def remove_invalid_feeds(feeds):
     print(f"✅ Invalid RSS feeds removed from {RSS_FEED_FILE}.")
     reload(rss_feed)
 
+### Build legacy data using iTunes (alphabetical approach) and update RSS feeds from raw data
+
 def build_legacy_data():
     """
-    Build legacy podcast data using the BuildDataset class (alphabetical approach)
+    Build legacy podcast data using BuildDataset (alphabetical approach)
     and update the RSS feed list from raw data extraction.
     """
     legacy_data = []
     try:
-        builder = BuildDataset(mode="alphabet")
+        builder = BuildDataset(mode="alphabet") # Default uses letters a-z
         legacy_df = builder.build_data()
         if "Name" in legacy_df.columns:
             legacy_df = legacy_df.rename(columns={"Name": "title", "Feed URL": "rssUrl"})
@@ -207,14 +215,19 @@ def build_legacy_data():
         print(f"❌ Error updating RSS feeds from raw data: {e}")
     return legacy_data
 
+### Build full database from all sources
+
 def build_full_database():
-    """Combine Podchaser, RSS, and legacy data to build the full podcast database."""
+    """Combine Podchaser, RSS, legacy, Spotify, and data to build the full podcast database."""
     podchaser_data = fetch_podchaser_data()
     rss_data = fetch_rss_feed_data(rss_feed.RSS_FEEDS)
     legacy_data = build_legacy_data()
     full_data = podchaser_data + rss_data + legacy_data
     print(f"Full database built with {len(full_data)} records.")
     return full_data
+
+
+### Save data to Excel
 
 def save_to_excel(data, filename=EXCEL_FILENAME):
     """Save podcast data to Excel, ensuring rows without valid emails are removed and 'id' is the first column."""
@@ -234,6 +247,8 @@ def save_to_excel(data, filename=EXCEL_FILENAME):
     with pd.ExcelWriter(filename, engine="openpyxl", mode="w") as writer:
         combined_df.to_excel(writer, index=False)
     print(f"✅ Data updated and saved to {filename}. Total valid records: {len(combined_df)}")
+
+### Automation function
 
 def automate_database_build():
     """Automate the full database build process on a schedule (e.g., daily at 03:00 AM)."""

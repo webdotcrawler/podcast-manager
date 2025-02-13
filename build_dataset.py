@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 import json
 import string
+import itertools
 
 RAW_DATA_DIR = "raw_data"
 
@@ -18,17 +19,29 @@ def save_raw_response(term, data):
         json.dump(data, f, indent=2)
     print(f"Saved raw data for term '{term}' to {filename}")
 
+def generate_alphabet_combinations(n=1):
+    """Generate all n-letter combinations (default n=1 for letters a-z)."""
+    if n == 1:
+        return list(string.ascii_lowercase)
+    else:
+        return [''.join(p) for p in itertools.product(string.ascii_lowercase, repeat=n)]
+
 class BuildDataset:
     """
     A legacy data builder that uses the iTunes Search API to collect podcast data.
-    By default, it iterates over each letter (a-z) to cover the entire catalog.
+    
+    The default mode is "alphabet", which generates search terms from the letters a–z.
+    You may increase the combination length (n) to get more granular queries.
     """
-    def __init__(self, terms=None):
-        # If no terms provided, use letters a-z.
-        if terms is None:
-            self.terms = list(string.ascii_lowercase)
+    def __init__(self, mode="alphabet", terms=None, n=1):
+        if mode == "alphabet":
+            # If terms are provided, use them; otherwise, generate n-letter combinations.
+            if terms is None:
+                self.terms = generate_alphabet_combinations(n=n)
+            else:
+                self.terms = terms
         else:
-            self.terms = terms
+            self.terms = terms if terms is not None else []
         self.rows = []  # List to hold each podcast's data as a dictionary
 
     def build_data(self):
@@ -36,7 +49,7 @@ class BuildDataset:
         for term in self.terms:
             params = {
                 "term": term,
-                "limit": 200,
+                "limit": 200,  # Maximum results per query
                 "country": "US",
                 "entity": "podcast"
             }
@@ -54,7 +67,7 @@ class BuildDataset:
                         "GenreIDs": ", ".join(map(str, result.get("genreIds", []))) if result.get("genreIds") else "N/A",
                         "iTunes URL": result.get("collectionViewUrl", result.get("trackViewUrl", "N/A")),
                         "rssUrl": result.get("feedUrl", "N/A"),
-                        # iTunes API does not provide email contacts
+                        # iTunes API does not provide email contact information
                         "author_email": "N/A"
                     }
                     self.rows.append(row)
