@@ -93,3 +93,7 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+
+
+unamed.py
