@@ -43,7 +43,7 @@ pip install -r requirements.txt
 ----------------------------------------------------------------
 3. **Set up environment variables:**
 
-Create a .env file in the root directory with the following keys:
+Create a .env file in the root directory with the following key:
 
 Production_Client_Token=your_podchaser_api_token
 
