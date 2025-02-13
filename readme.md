@@ -3,7 +3,7 @@
 This project is an integrated solution for building and maintaining a comprehensive podcast database. It collects and merges data from multiple sources, including:
 
 - **Podchaser API:** Retrieves fresh podcast data with numeric pagination (up to 100 items per call).
-- **iTunes Data:** Uses an alphabetical querying approach (iterating over A–Z or multi-letter combinations) to fetch legacy podcast data via the iTunes Search API. Raw JSON responses are archived in the `raw_data` folder for further processing.
+- **iTunes Data:** Uses an alphabetical querying approach (iterating over A–Z or multi-letter combinations) to fetch podcast data via the iTunes Search API. Raw JSON responses are archived in the `raw_data` folder for further processing.
 - **RSS Feeds:** Extracts and validates podcast metadata from RSS feeds. Invalid feeds (e.g., missing valid email addresses) are logged and removed from the feed list.
 
 The final merged data is saved as an Excel file (`podcasts_data.xlsx`) containing deduplicated records with valid contact information. An optional automation feature is available to schedule daily database builds.
@@ -11,7 +11,7 @@ The final merged data is saved as an Excel file (`podcasts_data.xlsx`) containin
 ## Features
 
 - **Comprehensive Data Collection:**  
-  Combines data from Podchaser, legacy iTunes (alphabetical queries), and RSS feeds.
+  Combines data from Podchaser, iTunes (alphabetical queries), and RSS feeds.
   
 - **Raw Data Archiving:**  
   Saves raw iTunes JSON responses in a dedicated `raw_data` folder for archival and reprocessing.
