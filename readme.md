@@ -70,7 +70,7 @@ This script will:
 
     Fetch data from Podchaser (up to 100 results per call).
     Extract and validate podcast data from the RSS feeds defined in rss_feed.py.
-    Build legacy podcast data from iTunes by iterating over the alphabet (A–Z) and archiving raw JSON responses in the raw_data folder.
+    Build podcast data from iTunes by iterating over the alphabet (A–Z) and archiving raw JSON responses in the raw_data folder.
     Merge all data sources and save the deduplicated dataset to podcasts_data.xlsx.
 
 Automation
