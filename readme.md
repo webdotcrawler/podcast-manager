@@ -96,5 +96,7 @@ Then run the script; it will execute the build process automatically on the sche
 
 ├── .env                    # Environment configuration file (not committed)
 
+├── requirements.txt # List of project dependencies
+
 └── README.md               # This file
 
